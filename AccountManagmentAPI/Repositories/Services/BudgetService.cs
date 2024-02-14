@@ -16,6 +16,7 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<IEnumerable<Budget>> GetAllBudgetsAsync(string userId)
         {
+            var budget = await _context.Budgets.Include(u => u.UserId).ToListAsync();
             return await _context.Budgets.ToListAsync();
         }
 

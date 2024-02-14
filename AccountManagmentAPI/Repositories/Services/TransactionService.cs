@@ -15,6 +15,7 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(string userId)
         {
+            var transaction = await _context.Transactions.Include(u => u.UserId).ToListAsync();
             return await _context.Transactions.ToListAsync();
         }
 

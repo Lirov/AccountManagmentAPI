@@ -25,6 +25,7 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<Category> CreateCategoryAsync(Category category, string userId)
         {
+
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
             return category;
