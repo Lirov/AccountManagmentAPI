@@ -4,6 +4,7 @@ using AccountManagmentAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AccountManagmentAPI.Migrations
 {
     [DbContext(typeof(AccountManagmentContext))]
-    partial class AccountManagmentContextModelSnapshot : ModelSnapshot
+    [Migration("20240215190539_Update_Category_Model")]
+    partial class Update_Category_Model
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

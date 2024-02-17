@@ -25,6 +25,11 @@ namespace AccountManagmentAPI.Repositories.Services
             return await _context.Budgets.Include(b => b.Amount).FirstOrDefaultAsync(b => b.BudgetId == budgetId);
         }
 
+        public async Task<Budget> GetBudgetByMonthAndCategoryAsync(string userId, int? categoryId, DateTime month)
+        {
+            return await _context.Budgets.FirstOrDefaultAsync(b => b.UserId == userId && b.CategoryId == categoryId && b.Month == month);
+        }
+
         public async Task<Budget> CreateBudgetAsync(Budget budget, string userId)
         {
             budget.UserId = userId;

@@ -1,6 +1,11 @@
 ﻿using AccountManagmentAPI.Models;
+using AccountManagmentAPI.Models.Helpers;
 using AccountManagmentAPI.Repositories.Interfaces;
+using CsvHelper.Configuration;
+using CsvHelper;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
 
 namespace AccountManagmentAPI.Repositories.Services
 {
@@ -15,8 +20,8 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(string userId)
         {
-            var transaction = await _context.Transactions.Include(u => u.UserId).ToListAsync();
-            return await _context.Transactions.ToListAsync();
+            return await _context.Transactions.Where(u => u.UserId == userId).ToListAsync();
+           
         }
 
         public async Task<Transaction> GetTransactionByIdAsync(Guid transactionId, string userId)
@@ -64,6 +69,65 @@ namespace AccountManagmentAPI.Repositories.Services
 
             _context.Transactions.Remove(transaction);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<decimal> GetGeneralBalanceAsync(string userId)
+        {
+            var income = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Category.Type == "Income")
+                .SumAsync(t => t.Amount);
+
+            var expenses = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Category.Type == "Expense")
+                .SumAsync(t => t.Amount);
+
+            return income - expenses;
+        }
+
+        public async Task<IEnumerable<CategoryBalance>> GetBalanceByCategoryAsync(string userId)
+        {
+            var categoryBalances = await _context.Transactions
+                .Where(t => t.UserId == userId)
+                .GroupBy(t => t.CategoryId)
+                .Select(group => new CategoryBalance
+                {
+                    CategoryId = group.Key,
+                    TotalAmount = group.Sum(t => t.Amount),
+                    CategoryName = group.First().Category.Name,
+                    Type = group.First().Category.Type
+                })
+                .ToListAsync();
+
+            return categoryBalances;
+        }
+
+        public async Task<List<Transaction>> GetTransactionsForExportAsync(string userId, DateTime? startDate, DateTime? endDate)
+        {
+            var query = _context.Transactions.Where(t => t.UserId == userId);
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(t => t.Date >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(t => t.Date <= endDate.Value);
+            }
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<string> GetGenerateCsvContentAsync(List<Transaction> transactions)
+        {
+            using var memoryStream = new MemoryStream();
+            using (var streamWriter = new StreamWriter(memoryStream))
+            using (var csvWriter = new CsvWriter(streamWriter, new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = "," }))
+            {
+                csvWriter.WriteRecords(transactions);
+            }
+
+            return Encoding.UTF8.GetString(memoryStream.ToArray());
         }
     }
 }

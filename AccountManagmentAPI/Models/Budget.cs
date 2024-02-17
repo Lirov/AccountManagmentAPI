@@ -9,16 +9,16 @@ namespace AccountManagmentAPI.Models
         public Guid BudgetId { get; set; }
 
         [Required]
-        public string UserId { get; set; } // Link to ASP.NET Core Identity User ID
+        public string UserId { get; set; }
 
-        public int? CategoryId { get; set; } // Optional, for category-specific budgets
+        public int? CategoryId { get; set; }
 
         [Required]
         public decimal Amount { get; set; }
 
         [Required]
-        public DateTime Month { get; set; } // You might want to store just the year and month
+        public DateTime Month { get; set; }
 
-        public Category Category { get; set; } // Allows null for overall budgets
+        public Category Category { get; set; }
     }
 }

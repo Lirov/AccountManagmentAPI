@@ -1,8 +1,10 @@
 ﻿using AccountManagmentAPI.Models;
+using AccountManagmentAPI.Models.Helpers;
 using AccountManagmentAPI.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text;
 
 namespace AccountManagmentAPI.Controllers
 {
@@ -38,6 +40,22 @@ namespace AccountManagmentAPI.Controllers
             }
 
             return transaction;
+        }
+
+        [HttpGet("balance")]
+        public async Task<ActionResult<decimal>> GetGeneralBalance()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var balance = await _transactionService.GetGeneralBalanceAsync(userId);
+            return Ok(balance);
+        }
+
+        [HttpGet("balanceByCategory")]
+        public async Task<ActionResult<IEnumerable<CategoryBalance>>> GetBalanceByCategoryAsync()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var categoryBalances = await _transactionService.GetBalanceByCategoryAsync(userId);
+            return Ok(categoryBalances);
         }
 
         [HttpPost]
@@ -77,6 +95,16 @@ namespace AccountManagmentAPI.Controllers
             await _transactionService.DeleteTransactionAsync(id, userId);
 
             return NoContent();
+        }
+
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportTransactions(DateTime? startDate, DateTime? endDate)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var transactions = await _transactionService.GetTransactionsForExportAsync(userId, startDate, endDate);
+            var csvContent = await _transactionService.GetGenerateCsvContentAsync(transactions);
+
+            return File(Encoding.UTF8.GetBytes(csvContent), "text/csv", "transactions.csv");
         }
     }
 }
