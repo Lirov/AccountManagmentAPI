@@ -20,9 +20,9 @@ namespace AccountManagmentAPI.Repositories.Services
             return await _context.Budgets.ToListAsync();
         }
 
-        public async Task<Budget> GetBudgetByIdAsync(Guid budgetId, string userId)
+        public async Task<Budget> GetBudgetByIdAsync(Guid budgetId, string userId, int categoryId)
         {
-            return await _context.Budgets.Include(b => b.Amount).FirstOrDefaultAsync(b => b.BudgetId == budgetId);
+            return await _context.Budgets.Include(b => b.Amount).FirstOrDefaultAsync(b => b.BudgetId == budgetId && b.CategoryId == categoryId);
         }
 
         public async Task<Budget> GetBudgetByMonthAndCategoryAsync(string userId, int? categoryId, DateTime month)
@@ -61,6 +61,43 @@ namespace AccountManagmentAPI.Repositories.Services
 
             _context.Budgets.Remove(budget);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> IsTransactionWithinBudgetAsync(string userId, decimal transactionAmount, int? categoryId = null)
+        {
+            // Assuming GetBudgetByCategoryAsync is the revised method
+            var budget = await GetBudgetByCategoryAsync(userId, categoryId);
+            if (budget == null)
+            {
+                // No budget set, so no restriction
+                return true;
+            }
+
+            var currentExpenditure = await GetCurrentExpenditureAsync(userId, categoryId);
+            var projectedExpenditure = currentExpenditure + transactionAmount;
+
+            // Check if the projected expenditure exceeds the budget
+            return projectedExpenditure <= budget.Amount;
+        }
+
+        public async Task<Budget> GetBudgetByCategoryAsync(string userId, int? categoryId)
+        {
+            return await _context.Budgets.FirstOrDefaultAsync(b => b.UserId == userId && (!categoryId.HasValue || b.CategoryId == categoryId.Value));
+        }
+
+        public async Task<decimal> GetCurrentExpenditureAsync(string userId, int? categoryId)
+        {
+            IQueryable<Transaction> query = _context.Transactions
+                                                     .Where(t => t.UserId == userId);
+
+            if (categoryId.HasValue)
+            {
+                query = query.Where(t => t.CategoryId == categoryId.Value);
+            }
+
+            decimal totalExpenditure = await query.SumAsync(t => t.Amount);
+
+            return totalExpenditure;
         }
     }
 }

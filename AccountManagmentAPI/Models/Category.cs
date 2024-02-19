@@ -13,6 +13,5 @@ namespace AccountManagmentAPI.Models
 
         public string Type { get; set; } // Income or Expense
 
-        //public ICollection<Transaction> Transactions { get; set; }
     }
 }

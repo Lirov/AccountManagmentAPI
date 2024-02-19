@@ -1,6 +1,7 @@
 ﻿using AccountManagmentAPI.Models;
 using AccountManagmentAPI.Models.Helpers;
 using AccountManagmentAPI.Repositories.Interfaces;
+using AccountManagmentAPI.Repositories.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -14,10 +15,12 @@ namespace AccountManagmentAPI.Controllers
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionService _transactionService;
+        private readonly IBudgetService _budgetService;
 
-        public TransactionController(ITransactionService transactionService)
+        public TransactionController(ITransactionService transactionService, IBudgetService budgetService)
         {
             _transactionService = transactionService;
+            _budgetService = budgetService;
         }
 
         [HttpGet]
@@ -59,7 +62,7 @@ namespace AccountManagmentAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Transaction>> PostTransaction(Transaction transaction)
+        public async Task<ActionResult<Transaction>> CreateTransaction(Transaction transaction)
         {
             if (!ModelState.IsValid)
             {
@@ -69,9 +72,21 @@ namespace AccountManagmentAPI.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             transaction.UserId = userId;
 
-            var newTransaction = await _transactionService.CreateTransactionAsync(transaction, userId);
+            bool withinBudget = await _budgetService.IsTransactionWithinBudgetAsync(userId, transaction.Amount, transaction.CategoryId);
+            if (!withinBudget)
+            {
+                return BadRequest("Transaction exceeds the budget.");
+            }
 
-            return CreatedAtAction(nameof(GetTransaction), new { id = newTransaction.TransactionId }, newTransaction);
+            try
+            {
+                var newTransaction = await _transactionService.CreateTransactionAsync(transaction, userId);
+                return CreatedAtAction(nameof(GetTransaction), new { id = newTransaction.TransactionId }, newTransaction);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while creating the transaction.");
+            }
         }
 
         [HttpPut("{id}")]

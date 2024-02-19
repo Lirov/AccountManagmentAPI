@@ -29,10 +29,10 @@ namespace AccountManagmentAPI.Controllers
 
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Budget>> GetBudget(Guid id)
+        public async Task<ActionResult<Budget>> GetBudget(Guid id, [FromQuery] int categoryId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var budget = await _budgetService.GetBudgetByIdAsync(id, userId);
+            var budget = await _budgetService.GetBudgetByIdAsync(id, userId, categoryId);
 
             if (budget == null)
             {

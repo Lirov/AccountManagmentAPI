@@ -21,7 +21,7 @@ namespace AccountManagmentAPI.Repositories.Services
         public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(string userId)
         {
             return await _context.Transactions.Where(u => u.UserId == userId).ToListAsync();
-           
+
         }
 
         public async Task<Transaction> GetTransactionByIdAsync(Guid transactionId, string userId)
@@ -40,6 +40,17 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<Transaction> CreateTransactionAsync(Transaction transaction, string userId)
         {
+            var currentBalance = await GetGeneralBalanceAsync(userId);
+
+            if (transaction.Amount < 0)
+            {
+
+                if (currentBalance + transaction.Amount < 100)
+                {
+                    throw new InsufficientBalanceException("The transaction was cancelled. Not enough money in the account to maintain a minimum balance of 100.");
+                }
+            }
+
             transaction.UserId = userId;
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
@@ -103,7 +114,9 @@ namespace AccountManagmentAPI.Repositories.Services
 
         public async Task<List<Transaction>> GetTransactionsForExportAsync(string userId, DateTime? startDate, DateTime? endDate)
         {
-            var query = _context.Transactions.Where(t => t.UserId == userId);
+            IQueryable<Transaction> query = _context.Transactions
+                                                     .Include(t => t.Category)
+                                                     .Where(t => t.UserId == userId);
 
             if (startDate.HasValue)
             {
@@ -121,13 +134,23 @@ namespace AccountManagmentAPI.Repositories.Services
         public async Task<string> GetGenerateCsvContentAsync(List<Transaction> transactions)
         {
             using var memoryStream = new MemoryStream();
-            using (var streamWriter = new StreamWriter(memoryStream))
+            using (var streamWriter = new StreamWriter(memoryStream, leaveOpen: true)) // Prevent streamWriter from closing memoryStream
             using (var csvWriter = new CsvWriter(streamWriter, new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = "," }))
             {
+                csvWriter.Context.RegisterClassMap<TransactionMap>();
                 csvWriter.WriteRecords(transactions);
+                await streamWriter.FlushAsync(); // Ensure all data is written to the MemoryStream
             }
 
-            return Encoding.UTF8.GetString(memoryStream.ToArray());
+            // No need to dispose memoryStream here as we need to read from it
+            memoryStream.Position = 0; // Reset the position to the beginning of the stream
+
+            // Now it's safe to read from memoryStream
+            using var reader = new StreamReader(memoryStream);
+            var csvContent = await reader.ReadToEndAsync();
+
+            // Now that we've read the content, memoryStream can be disposed if necessary
+            return csvContent;
         }
     }
 }
